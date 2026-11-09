@@ -1,49 +1,57 @@
 # QuantLab
 
-Post-training int8 quantization built from scratch in pure Python: symmetric quantization with per-tensor and per-channel scales, byte-exact size accounting, reconstruction error metrics, and a trained fixture model whose accuracy cost is measured rather than assumed.
+Post-training weight quantization from scratch, with actual packed artifacts and an independent browser inspector. Follow a weight through its int8 code, stored IEEE scale, reconstructed logit and exact fixed-input decision-margin audit.
 
-QuantLab answers the questions quantization write-ups usually skip:
+Open `docs/index.html` locally without a server. Python and browser arithmetic are independent. All original training, tests, magnitude controls and gates remain unchanged.
 
-- **What does int8 storage cost in accuracy?** A tiny linear classifier is trained in float on a deterministic synthetic dataset (one seed reproduces the run bit for bit), then its weights are quantized to int8. On the checked-in fixture, per-channel int8 matches fp32 test accuracy exactly (drop 0.0000) at 3.765x smaller storage.
-- **Where does quantization error actually live?** A controlled study boosts one matrix row x100: per-tensor's single scale forces a coarse step on every small row (small-row SNR 9.25 dB), while per-channel's per-row scales hold 48.39 dB - a 39.14 dB measured gain. This is the case per-channel quantization exists for, demonstrated directly.
+## Real bytes, explicit arithmetic
 
-## Measured results
+The original seed-0 perceptron and its quantized versions reach 59/60 synthetic test accuracy. That does not imply parity on unseen data. The original row-magnitude study remains: tensor-scale small-row SNR 9.25 dB versus row-scale 48.39 dB, a 39.14 dB difference.
 
-Fixture (seed 0, dim 64, 3 classes, per-channel), from `quantlab evaluate`:
+The original analytic row-scale payload is 204 B, compared with 768 conceptual fp32 weight bytes. That is not the size of a real file. QLB1 now stores row-major signed bytes, IEEE scales, a 24-byte versioned header and CRC32:
 
-| metric | fp32 | int8 |
-|---|---|---|
-| test accuracy | 0.9833 | 0.9833 (drop 0.0000) |
-| weight storage | 768 B | 204 B (3.765x) |
-| reconstruction | - | SNR 45.31 dB, cosine 0.999988 |
+| Original 192 weights | Actual file bytes | vs conceptual 768 B raw fp32 |
+|---|---:|---:|
+| Row scales, binary32 | 232 | 3.3103x |
+| Row scales, binary64 | 244 | 3.1475x |
+| Tensor scale, binary32 | 224 | 3.4286x |
+| Tensor scale, binary64 | 228 | 3.3684x |
 
-Row-magnitude study (`quantlab analyze`): per-channel small-row SNR gain +39.14 dB over per-tensor.
+The Python source and inference use binary64, not fp32. No integer matmul, RAM or speedup is measured. Packing weights does not make the floating-point working arrays low-bit. Scale precision changes only stored metadata; original int8 codes remain fixed. CRC32 is not authentication.
 
-CI pins both: `--max-accuracy-drop 0.0 --min-ratio 3.5` and `--min-snr-gain 10`.
+## Inspect every consequence
 
-## How it works
+- All 60 original test examples, both quantization granularities, both scale precisions and the original eight-row magnitude study remain visible. The archive also contains all 120 training examples. There is no best-example selection or retraining from the controls.
+- Editable bounded matrices and inputs expose every source weight, code, scale, reconstructed weight and signed contribution to the logit error. Download the input, full report or real QLB1 file; import a file through the independent strict browser parser.
+- Python `Fraction` and browser BigInt dyadics compute exact represented-real logits and pairwise sufficient margin bounds. Full rational witnesses are exported. Runtime predictions are separate: the exact audit does not certify floating-point accumulation, uncertain inputs, unseen examples, accuracy or deployment.
+- A visible half-step counterexample changes a strict winner into a tie lost by the original winner. The inverse tie case stays correct under the explicit first-index rule. A failed sufficient condition does not imply a changed prediction.
 
-Symmetric quantization maps zero to zero and uses abs(max) as the range: `scale = absmax / 127`, `q = clamp(round(w / scale), -127, 127)`, `w_hat = q * scale`. Per-tensor uses one scale per matrix; per-channel one scale per row. int8 storage is simulated with Python ints (values provably inside [-127, 127] in the test suite) and size accounting counts bytes directly: params x 4 vs params + 4 x scales. The quantized classifier stores int8 weights plus scales and dequantizes for inference - the shape a real quantized deployment takes.
-
-## Usage
+## Run
 
 ```bash
-python3 -m quantlab.cli evaluate --max-accuracy-drop 0.0 --min-ratio 3.5
-python3 -m quantlab.cli analyze --min-snr-gain 10
-python3 -m quantlab.cli json        # both modes + the magnitude study as JSON
-bash examples/demo.sh               # offline demo, both gate sides
+python -m quantlab.cli evaluate --max-accuracy-drop 0 --min-ratio 3.5
+python -m quantlab.cli analyze --min-snr-gain 10
+python -m quantlab.cli json
+# JSON schema: {"weights": [[...], [...]], "x": [...]}
+python -m quantlab.cli inspect --input input.json --mode per-channel --scale-bits 64
+python -m quantlab.cli pack --input input.json --output weights.qlb --scale-bits 32
+python -m quantlab.cli unpack --input weights.qlb
+python -m unittest discover -s tests -v
+node --test tests/test_inspector.cjs tests/test_browser.cjs
+bash examples/demo.sh
+bash examples/verify_wheel.sh
 ```
 
-## Layout
+`pack` refuses to overwrite an existing file. Inputs are bounded to 2..8 output rows, 1..128 features and finite nonboolean numbers with magnitude at most one million. The JSON reader rejects duplicate keys, nonfinite values, deep nesting, unknown fields and trailing content. QLB1 rejects malformed headers, inconsistent counts, reserved -128 codes, invalid scales, oversized files, truncation, trailing bytes and CRC mismatch. See [FORMAT.md](FORMAT.md) for the byte-level contract and error-bound derivation.
 
-- `quantlab/quantize.py` - quantization primitives, dequantize, size accounting, error metrics (max abs error, SNR dB, cosine).
-- `quantlab/model.py` - deterministic dataset, hashed bag-of-words features, perceptron-trained linear classifier, int8 quantized variant.
-- `quantlab/analysis.py` - the row-magnitude study comparing modes.
-- `tests/` - 28 unit tests covering quantization ranges and round-trips, zero handling, size accounting, dataset determinism, fixture accuracy parity, both analysis sides, and every CLI gate.
+## Verification
 
-## Limits
+39 Python tests include all 27 unchanged original tests. The old README's claim of 28 original tests was a counting error, not a removed test. Four Node/actual-Chrome tests compare 52 complete native/browser reports containing 59,004 numbers, every exported byte and exact rational witnesses. Original data, trainer and gates are preserved. Tests cover every single-byte corruption and every truncation of a small file, malformed files even with recomputed CRC, exact tie rules, randomized independent rational oracles, all original examples, strict invalid-state non-revival, imports, downloads, keyboard use and responsive layouts.
 
-- int8 storage is simulated, not packed bits: values are Python ints proven in range, and size accounting is byte arithmetic, not a serialized format.
-- Post-training quantization only; no quantization-aware training, no int4/mixed precision, no activation quantization.
-- The fixture model is tiny by design so the accuracy measurement is exact and fast; real models show non-zero drops, and nothing here claims they would not.
-- The classifier uses Python's perceptron over hashed features - enough to measure weight-quantization cost honestly, not a claim about LLM-scale behavior.
+An isolated installed wheel imports all seven modules, runs all six commands and reconstructs the complete original fixture outside the checkout. Seven CI jobs cover Python 3.10-3.13, original demo, actual Chrome and installed reproduction.
+
+## Limits and attribution
+
+This is a finite synthetic classifier, not a transformer or deployment benchmark. Hashed bag-of-words features discard word order and can collide. The file contains weights only, no bias, feature extraction, labels or activations. The fixed-input bound says nothing about uncertainty or unobserved data. Standard symmetric quantization and linear inequalities are attributed, not presented as new methods. QLB1 is a small educational format, not ONNX, GGUF or a secure checkpoint. See [methods, assumptions and sources](FORMAT.md).
+
+MIT.
