@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "quantlab"
-version = "0.1.0"
+version = "0.2.0"
 description = "int8 post-training quantization from scratch with measured accuracy and size trade-offs"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -12,3 +12,6 @@ license = {text = "MIT"}
 
 [project.scripts]
 quantlab = "quantlab.cli:main"
+
+[tool.setuptools.package-data]
+quantlab = ["data/*.json"]

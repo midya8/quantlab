@@ -1,0 +1,9 @@
+{
+  "quantlab/quantize.py": "78fb18f83a815cbbd6253356225bee28b0d3de9c60369ec2897d3b3435c406f8",
+  "quantlab/model.py": "840f74e49d331ebd78dbe0e323036eb41078283962bf5dcd223f9e7216efb019",
+  "quantlab/analysis.py": "6c026f2ca591ad08229027e36f2ed78ddc5a5a65d98951b5865062893f2402c6",
+  "tests/test_cli.py": "bab7b7ce2eb7ab94f2883f3841efa266f8693c9b057fdc9136231e29a0d1e772",
+  "tests/test_model.py": "c33ead5387e1bcbc467814bd14abd38476c5bf1f1e4ef9dab232a3046763ea5e",
+  "tests/test_quantize.py": "bfcdd2938f4eab104dc5f08f3f4cee878566d39c2336cbc3fe40c6bf51843784",
+  "examples/demo.sh": "621fafc6e7353e400782983925497343819e70daa1a8ab7fc9d7793722fbffd3"
+}
