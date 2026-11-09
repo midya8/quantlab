@@ -42,7 +42,39 @@ def main(argv: list[str] | None = None) -> int:
     p_json.add_argument("--dim", type=int, default=64)
     p_json.add_argument("--epochs", type=int, default=5)
 
+    p_in = sub.add_parser("inspect", help="full artifact and exact-dyadic margin audit")
+    p_in.add_argument("--input", required=True, help="bounded weights/x JSON")
+    p_in.add_argument("--mode", choices=["per-tensor", "per-channel"], default="per-channel")
+    p_in.add_argument("--scale-bits", choices=[32,64], type=int, default=64)
+    p_pack = sub.add_parser("pack", help="write a new QLB1 weight file, never overwrite")
+    p_pack.add_argument("--input", required=True)
+    p_pack.add_argument("--output", required=True)
+    p_pack.add_argument("--mode", choices=["per-tensor", "per-channel"], default="per-channel")
+    p_pack.add_argument("--scale-bits", choices=[32,64], type=int, default=64)
+    p_unpack = sub.add_parser("unpack", help="validate QLB1 and print metadata and weights")
+    p_unpack.add_argument("--input", required=True)
     args = parser.parse_args(argv)
+    if args.cmd in ("inspect", "pack", "unpack"):
+        from .inspector import strict_json, inspect
+        from .packed import decode, MAX_BYTES
+        try:
+            if args.cmd == "unpack":
+                with open(args.input, "rb") as f:
+                    result = decode(f.read(MAX_BYTES + 1))
+            else:
+                with open(args.input, "r", encoding="utf-8") as f:
+                    text = f.read(200001)
+                result = inspect(strict_json(text), args.mode, args.scale_bits)
+                if args.cmd == "pack":
+                    with open(args.output, "xb") as f:
+                        f.write(bytes.fromhex(result["payload_hex"]))
+                    result = {"output":args.output,"layout":result["layout"],"scale_bits":args.scale_bits}
+            print(json.dumps(result, indent=2, allow_nan=False))
+            return 0
+        except (OSError, ValueError, OverflowError) as e:
+            print("ERROR: " + str(e), file=sys.stderr)
+            return 2
+
 
     if args.cmd == "evaluate":
         clf, train, test = _train_fixture(args.seed, args.dim, args.epochs)
