@@ -53,7 +53,19 @@ def main(argv: list[str] | None = None) -> int:
     p_pack.add_argument("--scale-bits", choices=[32,64], type=int, default=64)
     p_unpack = sub.add_parser("unpack", help="validate QLB1 and print metadata and weights")
     p_unpack.add_argument("--input", required=True)
+    p_int = sub.add_parser("integer", help="activation codes, integer products and exact error decomposition")
+    p_int.add_argument("--input", required=True)
+    p_int.add_argument("--mode", choices=["per-tensor","per-channel"],default="per-channel")
+    p_int.add_argument("--scale-bits",type=int,choices=[32,64],default=64)
+    p_int.add_argument("--activation-bits",type=int,choices=[32,64],default=64)
     args = parser.parse_args(argv)
+    if args.cmd == "integer":
+        from .integer import integer_audit,read_request
+        try:
+            with open(args.input,encoding="utf-8")as f:v=read_request(f.read(200001))
+            print(json.dumps(integer_audit(v,args.mode,args.scale_bits,args.activation_bits),indent=2,allow_nan=False));return 0
+        except (OSError,ValueError,OverflowError)as e:
+            print("ERROR: "+str(e),file=sys.stderr);return 2
     if args.cmd in ("inspect", "pack", "unpack"):
         from .inspector import strict_json, inspect
         from .packed import decode, MAX_BYTES
