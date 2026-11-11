@@ -55,3 +55,18 @@ An isolated installed wheel imports all seven modules, runs all six commands and
 This is a finite synthetic classifier, not a transformer or deployment benchmark. Hashed bag-of-words features discard word order and can collide. The file contains weights only, no bias, feature extraction, labels or activations. The fixed-input bound says nothing about uncertainty or unobserved data. Standard symmetric quantization and linear inequalities are attributed, not presented as new methods. QLB1 is a small educational format, not ONNX, GGUF or a secure checkpoint. See [methods, assumptions and sources](FORMAT.md).
 
 MIT.
+
+
+## Activation × weight integer dot-product audit
+
+A separate [interactive page](https://midya8.github.io/quantlab/integer.html) traces signed 8-bit products and every partial accumulator, with fixed user-declared activation range, stored binary32/64 activation scales, exact nearest-even codes and clipping flags. Python `Fraction` and independent browser BigInt dyadics export the complete exact decomposition `weight error + activation error = total error`. Every prefix fits int32 by the checked shape bound, up to 2,064,512. Integer products are exact; final rescale is floating, not integer-only end-to-end inference.
+
+The visible activation-only control uses exactly represented weights `[[127,0],[0,127]]`, input `[0.4,0.49]`, and range `127`: the strict row-1 winner becomes a zero-code tie won by row 0, with exactly zero weight error. This is constructed, not a trained result or accuracy claim.
+
+```sh
+quantlab integer --input request.json --mode per-channel --scale-bits 64 --activation-bits 32
+python scripts/integer_fixtures.py --check
+PYTHONPATH=. python scripts/verify_integer.py
+```
+
+[INTEGER.md](INTEGER.md) specifies semantics, limits, provenance and reproduction. Original QLB1 bytes, training, 39 earlier Python tests and 52 earlier report witnesses stay unchanged. Current totals: 47 Python tests and seven Node/actual-Chrome tests. New checks include 240 separately rounded rational reference cases, 519 signed half-step activation cases, 72 full cross-runtime reports covering 6,848 products, NumPy int32 dot products/prefixes, 168 browser row selections and 20 responsive views. An isolated installed package verifies every new report and both CLI entry points. No hardware speed, RAM, calibrated range, unseen accuracy or new-algorithm claim.
