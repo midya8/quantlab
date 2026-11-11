@@ -17,7 +17,7 @@ The original analytic row-scale payload is 204 B, compared with 768 conceptual f
 | Tensor scale, binary32 | 224 | 3.4286x |
 | Tensor scale, binary64 | 228 | 3.3684x |
 
-The Python source and inference use binary64, not fp32. No integer matmul, RAM or speedup is measured. Packing weights does not make the floating-point working arrays low-bit. Scale precision changes only stored metadata; original int8 codes remain fixed. CRC32 is not authentication.
+The original weight-only source and inference use binary64, not fp32. That inspector measures no integer matmul, RAM or speedup. The separate activation extension below adds bounded integer dot products, not a hardware benchmark. Packing weights does not make the floating-point working arrays low-bit. Scale precision changes only stored metadata; original int8 codes remain fixed. CRC32 is not authentication.
 
 ## Inspect every consequence
 
@@ -46,12 +46,27 @@ bash examples/verify_wheel.sh
 
 ## Verification
 
-39 Python tests include all 27 unchanged original tests. The old README's claim of 28 original tests was a counting error, not a removed test. Four Node/actual-Chrome tests compare 52 complete native/browser reports containing 59,004 numbers, every exported byte and exact rational witnesses. Original data, trainer and gates are preserved. Tests cover every single-byte corruption and every truncation of a small file, malformed files even with recomputed CRC, exact tie rules, randomized independent rational oracles, all original examples, strict invalid-state non-revival, imports, downloads, keyboard use and responsive layouts.
+The earlier packed-weight extension had 39 Python tests, including all 27 unchanged original tests. The old README's claim of 28 original tests was a counting error, not a removed test. Four Node/actual-Chrome tests compare 52 complete native/browser reports containing 59,004 numbers, every exported byte and exact rational witnesses. Original data, trainer and gates are preserved. Tests cover every single-byte corruption and every truncation of a small file, malformed files even with recomputed CRC, exact tie rules, randomized independent rational oracles, all original examples, strict invalid-state non-revival, imports, downloads, keyboard use and responsive layouts.
 
-An isolated installed wheel imports all seven modules, runs all six commands and reconstructs the complete original fixture outside the checkout. Seven CI jobs cover Python 3.10-3.13, original demo, actual Chrome and installed reproduction.
+The earlier isolated installed wheel imported seven modules and ran six commands and reconstructs the complete original fixture outside the checkout. The current eight CI jobs cover Python 3.10-3.13, original demo, actual Chrome, installed reproduction and an actual NumPy int32 reference.
 
 ## Limits and attribution
 
 This is a finite synthetic classifier, not a transformer or deployment benchmark. Hashed bag-of-words features discard word order and can collide. The file contains weights only, no bias, feature extraction, labels or activations. The fixed-input bound says nothing about uncertainty or unobserved data. Standard symmetric quantization and linear inequalities are attributed, not presented as new methods. QLB1 is a small educational format, not ONNX, GGUF or a secure checkpoint. See [methods, assumptions and sources](FORMAT.md).
 
 MIT.
+
+
+## Activation × weight integer dot-product audit
+
+A separate [interactive page](https://midya8.github.io/quantlab/integer.html) traces signed 8-bit products and every partial accumulator, with fixed user-declared activation range, stored binary32/64 activation scales, exact nearest-even codes and clipping flags. Python `Fraction` and independent browser BigInt dyadics export the complete exact decomposition `weight error + activation error = total error`. Every prefix fits int32 by the checked shape bound, up to 2,064,512. Integer products are exact; final rescale is floating, not integer-only end-to-end inference.
+
+The visible activation-only control uses exactly represented weights `[[127,0],[0,127]]`, input `[0.4,0.49]`, and range `127`: the strict row-1 winner becomes a zero-code tie won by row 0, with exactly zero weight error. This is constructed, not a trained result or accuracy claim.
+
+```sh
+quantlab integer --input request.json --mode per-channel --scale-bits 64 --activation-bits 32
+python scripts/integer_fixtures.py --check
+PYTHONPATH=. python scripts/verify_integer.py
+```
+
+[INTEGER.md](INTEGER.md) specifies semantics, limits, provenance and reproduction. Original QLB1 bytes, training, 39 earlier Python tests and 52 earlier report witnesses stay unchanged. Current totals: 47 Python tests and seven Node/actual-Chrome tests. New checks include 240 separately rounded rational reference cases, 519 signed half-step activation cases, 72 full cross-runtime reports covering 6,848 products, NumPy int32 dot products/prefixes, 168 browser row selections and 20 responsive views. An isolated installed package verifies every new report and both CLI entry points. No hardware speed, RAM, calibrated range, unseen accuracy or new-algorithm claim.

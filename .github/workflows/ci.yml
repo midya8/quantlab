@@ -20,6 +20,7 @@ jobs:
         with:
           python-version: '3.12'
       - run: bash examples/demo.sh
+      - run: python scripts/integer_fixtures.py --check
   web:
     runs-on: ubuntu-latest
     steps:
@@ -27,7 +28,13 @@ jobs:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: '22'
-      - run: node --test tests/test_inspector.cjs tests/test_browser.cjs
+      - uses: browser-actions/setup-chrome@19ae4b339ee18925ab85cf12c1041150ea4a44c8
+        id: chrome
+        with:
+          install-dependencies: true
+      - run: node --test --test-concurrency=1 tests/test_inspector.cjs tests/test_browser.cjs tests/test_integer.cjs tests/test_integer_browser.cjs
+        env:
+          CHROME_BIN: ${{ steps.chrome.outputs.chrome-path }}
   package:
     runs-on: ubuntu-latest
     steps:
@@ -36,3 +43,12 @@ jobs:
         with:
           python-version: '3.10'
       - run: bash examples/verify_wheel.sh
+  integer-reference:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.12'
+      - run: python -m pip install numpy==2.2.6
+      - run: PYTHONPATH=. python scripts/verify_integer.py

@@ -38,3 +38,15 @@ PY
 "$TMP/venv/bin/quantlab" inspect --input input.json > report.json
 "$TMP/venv/bin/quantlab" pack --input input.json --output weights.qlb
 "$TMP/venv/bin/quantlab" unpack --input weights.qlb > decoded.json
+
+# New module and reports are verified with the installed interpreter outside checkout.
+"$TMP/venv/bin/python" "$ROOT/scripts/verify_integer.py"
+"$TMP/venv/bin/python" - <<'PY2'
+import json,importlib.resources as r
+from pathlib import Path
+c=json.loads(r.files('quantlab').joinpath('data/integer-0.json').read_text())[0]
+Path('integer-input.json').write_text(json.dumps(c['input']))
+PY2
+"$TMP/venv/bin/quantlab" integer --input integer-input.json > integer-console.json
+"$TMP/venv/bin/python" -m quantlab.cli integer --input integer-input.json > integer-module.json
+cmp integer-console.json integer-module.json
