@@ -28,7 +28,13 @@ jobs:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: '22'
-      - run: node --test tests/test_inspector.cjs tests/test_browser.cjs tests/test_integer.cjs tests/test_integer_browser.cjs
+      - uses: browser-actions/setup-chrome@19ae4b339ee18925ab85cf12c1041150ea4a44c8
+        id: chrome
+        with:
+          install-dependencies: true
+      - run: node --test --test-concurrency=1 tests/test_inspector.cjs tests/test_browser.cjs tests/test_integer.cjs tests/test_integer_browser.cjs
+        env:
+          CHROME_BIN: ${{ steps.chrome.outputs.chrome-path }}
   package:
     runs-on: ubuntu-latest
     steps:
