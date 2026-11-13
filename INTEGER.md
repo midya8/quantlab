@@ -2,7 +2,12 @@
 
 ## Semantics
 
-This is a separate extension. Original QLB1 format, original training and packed weight inspector are unchanged. The new request has exactly `weights`, `x`, and `activation_range`. Shape: 2..8 rows and 1..128 features. All values are nonboolean finite binary64 numbers of absolute magnitude at most 1,000,000; range must be positive. JSON rejects duplicate keys, nonfinite constants, excessive nesting and inputs above 200KB. Direct native calls validate the same numeric and shape limits. Unrepresentable positive scales are rejected, never silently replaced.
+The integer inspector quantizes activations as well as weights, then exposes
+every integer product and partial sum. It uses the original QLB1 weights without
+changing the format, trainer or weight-only inspector. Final score rescaling
+uses floating point; this is not integer-only end-to-end inference.
+
+ The new request has exactly `weights`, `x`, and `activation_range`. Shape: 2..8 rows and 1..128 features. All values are nonboolean finite binary64 numbers of absolute magnitude at most 1,000,000; range must be positive. JSON rejects duplicate keys, nonfinite constants, excessive nesting and inputs above 200KB. Direct native calls validate the same numeric and shape limits. Unrepresentable positive scales are rejected, never silently replaced.
 
 The fixed declared activation range r produces s_x = r / 127, first divided in binary64, then rounded to the selected binary32/64 storage precision. Let s be that exact stored value. Each code is clamp(round_even(exact(x) / exact(s)), -127,127). This activation coding uses exact represented-real division, not a rounded binary64 quotient. Original weight codes retain the old inspector's binary64 division/rounding and QLB1 serialization semantics. The differing rounding paths are deliberate and explicit, not ONNX or TFLite compatibility.
 
@@ -28,7 +33,7 @@ Nine controls cover an activation-only decision change, fixed-range clipping, ex
 
 The activation-only control has W=[[127,0],[0,127]], x=[0.4,0.49], r=127. Stored weight and activation scales are exactly 1. Source scores are the represented-real values 127*x, with row 1 strictly largest. Quantized x=[0,0], so both accumulators are zero and row 0 wins the tie. Weight error is exactly zero. This example is constructed, not learned or an accuracy measurement.
 
-Native tests separately compute floor/remainder nearest-even activation codes for 240 seeded random reports, check every product/prefix and exact decomposition, and exhaust all 519 half-unit values from -129.5 to 129.5. Other tests cover both bound signs, underflow rejection, duplicate keys, types, no input mutation, old-payload equality and CLI failure behavior. Total Python tests:47, including all39 earlier tests. Total Node/actual-Chrome tests:7, including all4 earlier tests. Browser tests verify all72 reports,168 row selections,20 views at1280/768/390/320 widths, trusted report/input downloads, duplicate-key rejection and edit invalidation.
+Native tests separately compute floor/remainder nearest-even activation codes for 240 seeded random reports, check every product/prefix and exact decomposition, and exhaust all 519 half-unit values from -129.5 to 129.5. Other tests cover both bound signs, underflow rejection, duplicate keys, types, no input mutation, old-payload equality and CLI failure behavior. The current suite has 47 Python tests, including all 39 earlier tests, and seven Node/actual-Chrome tests, including all four earlier tests. Browser tests verify all 72 reports, 168 row selections and 20 views at 1280/768/390/320 widths, trusted report/input downloads, duplicate-key rejection and edit invalidation.
 
 ## Reproduce
 
@@ -40,7 +45,7 @@ node --test tests/test_inspector.cjs tests/test_browser.cjs tests/test_integer.c
 bash examples/verify_wheel.sh
 ```
 
-The wheel is installed into a fresh isolated environment. Outside the source checkout it reproduces original training and 52 reports, imports the eighth module, verifies all72 new reports, and executes the new command through both installed entry points. The optional NumPy check runs when NumPy is available; it is not a runtime dependency and the isolated package deliberately uses only the standard library. Package and CI test totals are not hardware benchmarks.
+The wheel is installed into a fresh isolated environment. Outside the source checkout it reproduces original training and 52 reports, imports the eighth module, verifies all 72 new reports, and executes the integer command through both installed entry points. The optional NumPy check runs when NumPy is available; it is not a runtime dependency and the isolated package deliberately uses only the standard library. Package and CI test totals are not hardware benchmarks.
 
 ## Prior work and limits
 
