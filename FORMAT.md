@@ -61,9 +61,13 @@ bash examples/demo.sh
 bash examples/verify_wheel.sh
 ```
 
-The original three quantization/model/analysis modules, three original test files and demo are hash-pinned in `quantlab/data/original-hashes.json`. The README's former test count of 28 was inaccurate: test discovery finds 27 original tests; all 27 remain unchanged. The extension currently has 39 Python tests and four Node/actual-Chrome tests. Fifty-two full report witnesses cover both granularities, both scale precisions, six original test examples, the original eight-row study and all constructed controls. They contain 59,004 numeric values plus every packed byte and exact rational string. Comparison tolerance for binary64 display arithmetic is 1e-12 relative/absolute; byte strings and rational strings must match exactly.
+The original three quantization/model/analysis modules, three original test files and demo are hash-pinned in `quantlab/data/original-hashes.json`. The README's former test count of 28 was inaccurate: test discovery finds 27 original tests; all 27 remain unchanged. The packed-weight stage had 39 Python tests and four Node/actual-Chrome tests;
+the current 47-Python/seven-Node suite includes those tests and the separate
+[activation audit](INTEGER.md). Fifty-two full report witnesses cover both granularities, both scale precisions, six original test examples, the original eight-row study and all constructed controls. They contain 59,004 numeric values plus every packed byte and exact rational string. Comparison tolerance for binary64 display arithmetic is 1e-12 relative/absolute; byte strings and rational strings must match exactly.
 
-An isolated installed wheel imports all seven implementation modules and runs six CLI commands outside the source checkout, reconstructs the full original train/test data and weights, and checks all 52 full reports. Seven CI jobs cover four Python versions, original demo, browser and installed-package reproduction.
+An isolated installed wheel imports all seven implementation modules and runs six CLI commands outside the source checkout, reconstructs the full original train/test data and weights, and checks all 52 full reports. That stage used seven CI jobs covering four Python versions, original demo,
+browser and installed-package reproduction. The current workflow also checks
+integer products against NumPy int32.
 
 ## Attribution and context
 
