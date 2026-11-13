@@ -1,10 +1,26 @@
 # QuantLab
 
-Post-training weight quantization from scratch, with actual packed artifacts and an independent browser inspector. Follow a weight through its int8 code, stored IEEE scale, reconstructed logit and exact fixed-input decision-margin audit.
+A Python post-training quantizer and two independent browser inspectors. The
+weight inspector follows int8 codes through packed files, reconstructed logits
+and fixed-input decision bounds. The activation inspector adds integer products,
+partial sums and an exact error decomposition, with floating-point final rescale.
 
-Open `docs/index.html` locally without a server. Python and browser arithmetic are independent. All original training, tests, magnitude controls and gates remain unchanged.
+Open [the weight inspector](https://midya8.github.io/quantlab/) or
+[the integer-product inspector](https://midya8.github.io/quantlab/integer.html).
+Both also work from their local HTML files without a server. The current suite
+has 47 Python tests and seven Node/actual-Chrome tests, including the earlier
+weight-only checks described below. Original training, magnitude controls and
+measured artifacts remain unchanged.
 
-## Real bytes, explicit arithmetic
+## Packed weights and integer products
+
+The original inspector stores int8 weights and reconstructs floating-point
+logits, with exact represented-real decision bounds for one fixed input.
+The integer inspector also quantizes activations and traces every product and
+partial sum. Its final rescale is floating point. Neither calculation measures
+hardware speed or memory use.
+
+## Packed file sizes
 
 The original seed-0 perceptron and its quantized versions reach 59/60 synthetic test accuracy. That does not imply parity on unseen data. The original row-magnitude study remains: tensor-scale small-row SNR 9.25 dB versus row-scale 48.39 dB, a 39.14 dB difference.
 
@@ -19,7 +35,7 @@ The original analytic row-scale payload is 204 B, compared with 768 conceptual f
 
 The original weight-only source and inference use binary64, not fp32. That inspector measures no integer matmul, RAM or speedup. The separate activation extension below adds bounded integer dot products, not a hardware benchmark. Packing weights does not make the floating-point working arrays low-bit. Scale precision changes only stored metadata; original int8 codes remain fixed. CRC32 is not authentication.
 
-## Inspect every consequence
+## Weight-inspector reports
 
 - All 60 original test examples, both quantization granularities, both scale precisions and the original eight-row magnitude study remain visible. The archive also contains all 120 training examples. There is no best-example selection or retraining from the controls.
 - Editable bounded matrices and inputs expose every source weight, code, scale, reconstructed weight and signed contribution to the logit error. Download the input, full report or real QLB1 file; import a file through the independent strict browser parser.
@@ -37,7 +53,7 @@ python -m quantlab.cli inspect --input input.json --mode per-channel --scale-bit
 python -m quantlab.cli pack --input input.json --output weights.qlb --scale-bits 32
 python -m quantlab.cli unpack --input weights.qlb
 python -m unittest discover -s tests -v
-node --test tests/test_inspector.cjs tests/test_browser.cjs
+node --test --test-concurrency=1 tests/test_inspector.cjs tests/test_browser.cjs tests/test_integer.cjs tests/test_integer_browser.cjs
 bash examples/demo.sh
 bash examples/verify_wheel.sh
 ```
@@ -48,14 +64,13 @@ bash examples/verify_wheel.sh
 
 The earlier packed-weight extension had 39 Python tests, including all 27 unchanged original tests. The old README's claim of 28 original tests was a counting error, not a removed test. Four Node/actual-Chrome tests compare 52 complete native/browser reports containing 59,004 numbers, every exported byte and exact rational witnesses. Original data, trainer and gates are preserved. Tests cover every single-byte corruption and every truncation of a small file, malformed files even with recomputed CRC, exact tie rules, randomized independent rational oracles, all original examples, strict invalid-state non-revival, imports, downloads, keyboard use and responsive layouts.
 
-The earlier isolated installed wheel imported seven modules and ran six commands and reconstructs the complete original fixture outside the checkout. The current eight CI jobs cover Python 3.10-3.13, original demo, actual Chrome, installed reproduction and an actual NumPy int32 reference.
+The earlier installed-wheel gate imported seven modules, ran six commands and
+reconstructed the complete original fixture outside the checkout. The current
+gate adds the integer module, 72 reports and both integer CLI entry points. The current eight CI jobs cover Python 3.10-3.13, original demo, actual Chrome, installed reproduction and an actual NumPy int32 reference.
 
 ## Limits and attribution
 
 This is a finite synthetic classifier, not a transformer or deployment benchmark. Hashed bag-of-words features discard word order and can collide. The file contains weights only, no bias, feature extraction, labels or activations. The fixed-input bound says nothing about uncertainty or unobserved data. Standard symmetric quantization and linear inequalities are attributed, not presented as new methods. QLB1 is a small educational format, not ONNX, GGUF or a secure checkpoint. See [methods, assumptions and sources](FORMAT.md).
-
-MIT.
-
 
 ## Activation × weight integer dot-product audit
 
@@ -70,3 +85,7 @@ PYTHONPATH=. python scripts/verify_integer.py
 ```
 
 [INTEGER.md](INTEGER.md) specifies semantics, limits, provenance and reproduction. Original QLB1 bytes, training, 39 earlier Python tests and 52 earlier report witnesses stay unchanged. Current totals: 47 Python tests and seven Node/actual-Chrome tests. New checks include 240 separately rounded rational reference cases, 519 signed half-step activation cases, 72 full cross-runtime reports covering 6,848 products, NumPy int32 dot products/prefixes, 168 browser row selections and 20 responsive views. An isolated installed package verifies every new report and both CLI entry points. No hardware speed, RAM, calibrated range, unseen accuracy or new-algorithm claim.
+
+## License
+
+MIT.
